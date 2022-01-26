@@ -1,0 +1,285 @@
+---
+title: "__Bat Acoustic Survey Results__"
+date: "Report produced `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    theme: cerulean
+params:
+  n: NA
+---
+
+  <img width="100" src="../images/NABat_logo.png">
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.align = "center")
+```
+
+```{r results = 'hide'}
+
+#packages for the report
+
+library(tidyverse)
+library(flextable)
+library(leaflet)
+library(janitor)
+library(sf)
+library(knitr)
+library(magrittr)
+library(data.table)
+library(scales)
+```
+
+```{r}
+species_detections <- read_csv(here::here("data", "species_grts_allsp.csv")) %>% 
+  filter(grts_cell_id %in% as.numeric(params$n))
+
+species_ref_table <- read_csv(here::here("data", "species_reference_table.csv"))
+
+load(paste0(here::here(), "/data/grts.grid.rda"))
+
+grts_mapping <- grts.grid %>% 
+  dplyr::filter(country == "US") %>% 
+  st_as_sf() %>%
+  dplyr::filter(GRTS_ID %in% unique(species_detections$grts_cell_id))
+
+this_year <- max(species_detections$year, na.rm = TRUE)
+```
+
+```{r}
+dat_count <- species_detections %>% 
+  group_by(year, grts_cell_id, species_code) %>%
+  dplyr::summarise(n = n()) %>%
+  spread(species_code, n) %>%
+  replace(is.na(.), 0) %>%
+  pivot_longer(., names(.[3:length(.)])) %>% 
+  mutate(pres_abs = case_when(
+    value == 0 ~ "",
+    value > 0 ~ "X"
+  )) %>%
+  dplyr::select(-value) %>% 
+  left_join(species_ref_table, by = c("name" = "species_full_name")) %>% 
+  rename("species_full_name" = "name")
+```
+
+***
+
+## __Map of Select NABat Cell(s)__
+
+This map shows boundaries of the NABat cell(s) included in this report.
+
+<style>
+.html-widget {
+    margin: auto;
+}
+</style>
+
+```{r Map}
+map <- grts_mapping %>% 
+  leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(data = grts_mapping, label = ~paste("NABat Cell ", GRTS_ID), fillOpacity = 0, weight = 2, labelOptions = labelOptions(noHide = T))
+
+map
+```
+
+***
+
+## __Years of Data__
+
+Number of years of survey effort in each NABat cell.
+
+```{r}
+dat_years <- species_detections %>% 
+  group_by(grts_cell_id, year) %>%
+  dplyr::summarise(n = n()) %>% 
+  pivot_wider(., names_from = grts_cell_id, values_from = year, values_fn = length) %>% 
+  dplyr::select(-n) %>% 
+  replace(is.na(.), 0) %>%
+  summarise_all(sum) %>% 
+  pivot_longer(everything())
+
+dat_years %>% flextable %>% 
+  theme_vanilla() %>% 
+  set_header_labels(.,
+                    name = "NABat Cell",
+                    value = "Years of Survey Effort") %>% 
+  flextable::align(., align = "center", part = "all") %>% 
+  set_table_properties(., layout = "autofit")
+```
+
+***
+
+## __Survey Dates__
+
+```{r}
+survey_dates <- species_detections %>% 
+  dplyr::group_by(grts_cell_id, year) %>% 
+  dplyr::summarise(start_date = min(recording_night), end_date = max(recording_night)) %>% 
+  mutate(grts_cell_id = as.character(grts_cell_id)) %>% #gets rid  of commas in table output.
+  mutate(year = as.character(year)) %>% #gets rid  of commas in table output.
+  rename(Year = year)
+
+survey_dates %>% flextable() %>% 
+    merge_v(j = ~grts_cell_id) %>% 
+    set_header_labels(.,
+                    grts_cell_id = "NABat Cell",
+                    location_name = "Location Name",
+                    start_date = "Survey Start Date",
+                    end_date = "Survey End Date") %>% 
+  theme_vanilla() %>% 
+  flextable::align(., align = "center", part = "all") %>% 
+  set_table_properties(., layout = "autofit")
+```
+
+***
+
+## __Species Detected__ {.tabset .tabset-pills}
+
+### Bat species confirmed in most recent survey year
+
+The most recent year of data is `r this_year`
+
+```{r Species by Location Table Most Recent Year}
+species_ref_list <- unique(species_ref_table$species_code)
+
+species_table_this_year <- dat_count %>% 
+  dplyr::filter(year == this_year) %>%
+  pivot_wider(., id_cols = species_full_name,
+             names_from = grts_cell_id,
+             values_from = pres_abs,
+             names_glue = "{grts_cell_id}",
+             names_sort = TRUE) %>% 
+  dplyr::rename("Species" = "species_full_name") 
+
+species_table_this_year %>%
+  flextable(col_keys = names(.)) %>% 
+  theme_vanilla() %>% 
+  flextable::align(., align = "center", part = "all") %>%
+  set_table_properties(., width = 1, layout = "autofit") %>% 
+  set_caption("An X indicates that the species was detected in most recent survey year.")
+```
+
+***
+
+### Bat species confirmed all years
+
+```{r Species by Location Table All Time}
+species_table_all_time <- dat_count %>%
+  dplyr::filter(pres_abs == "X") %>% 
+  dplyr::group_by(species_full_name, grts_cell_id) %>% 
+  dplyr::summarise(years = paste(unique(year), collapse = ", ")) %>% 
+  tidyr::spread(grts_cell_id, years) %>% 
+  dplyr::rename("Species" = species_full_name) 
+
+species_table_all_time[ species_table_all_time == "NULL"] <- "Not detected"
+
+species_table_all_time %>% 
+  flextable(col_keys = names(.)) %>% 
+  theme_vanilla() %>% 
+  flextable::align(., align = "center", part = "all") %>%
+  set_table_properties(width = 1, layout = "autofit") %>% 
+  set_caption("This table shows which years each bat species was detected at each location.")
+```
+
+***
+
+## __Species Count__
+
+Number of bat species confirmed at each site in each year of surveying. These are counts of species level identifications. Ambiguous IDs (e.g. "LACITABR") have been filtered out of these counts. Occurrences such as "LACITABR", "MYCAMYYU", etc. do NOT count as a detection of either species for the purposes of these counts. 
+
+```{r Species Count Table}
+
+#tally of species by site
+
+species_count <- dat_count %>% 
+  dplyr::filter(pres_abs == "X") %>% 
+  dplyr::group_by(grts_cell_id, year) %>% 
+  dplyr::summarise("Number of Species" = n_distinct(species_code, na.rm = FALSE)) %>% 
+             mutate(year = as.character(year), grts_cell_id = as.character(grts_cell_id)) %>%  #gets rid  of commas in table output.
+  pivot_wider(., names_from = year, values_from = "Number of Species", names_sort = TRUE) %>% 
+  pivot_longer(., cols = 2:length(.)) %>% 
+  dplyr::rename(., "NABat Cell" = grts_cell_id)
+
+species_count %>% ggplot(aes(x = name, y = value, fill = name)) +
+  geom_bar(stat = 'identity', position="dodge") +
+  labs(x= "", y = "Count of Species", fill = "Year") +
+  scale_y_continuous(limits = c(0, max(species_count$value, na.rm = T)+1)) +
+  geom_text(aes(label = value), position = position_dodge(width = 0.9), vjust = -0.25) +
+  facet_wrap(~ `NABat Cell`, ncol = 2, labeller = label_both, scale="free") +
+  scale_x_discrete(guide = guide_axis(n.dodge=2))
+
+#flextable of species count as alternative to bar chart
+# 
+# species_count %>% flextable() %>% 
+#     merge_v(j = ~grts_cell_id) %>% 
+#     set_header_labels(.,
+#                     grts_cell_id = "NABat Cell",
+#                     location_name = "Location Name") %>% 
+#   theme_vanilla() %>% 
+#   flextable::align(., align = "center", part = "all") %>% 
+#   set_table_properties(., layout = "autofit")
+```
+
+***
+
+## __Photos of Species Detected__
+
+Click on the links below to learn more about the species have been detected at these sites to date.
+
+```{r Species Photos}
+species_ref_list <- unique(species_ref_table$species_code)
+
+photos <- dat_count %>% 
+  dplyr::filter(pres_abs == "X") %>%
+  pivot_wider(., id_cols = species_code) %>%
+  mutate(photo = case_when(
+    species_code %in% species_ref_list ~ sprintf("![](../images/%s.jpg)", species_code),
+    !species_code %in% species_ref_list ~ "no photo available"
+  )) %>% 
+  left_join(species_ref_table, by = c("species_code" = "species_code")) %>% 
+  dplyr::select(species_full_name, photo, species_url) %>% 
+  dplyr::rename("Species" = species_full_name, "Photo" = photo, "Learn More" = species_url)
+
+kable(photos)
+```
+
+## __Background__
+
+Our region’s bats face unprecedented threats, including widespread habitat alteration and destruction, climate change and drought, and the arrival and spread of a deadly fungal disease called White-nose Syndrome. Yet little is known about the current abundance and distribution of most US bat species. NABat brings together a diverse and extensive network of partners in collecting data to assess the status and trends of bat populations throughout North America to inform the conservation and management of bats. Participation by private landowners is critical to the success of effective bat population monitoring in our region as many of our highest priority survey locations occur on private land. 
+ 
+***
+
+## __Methods__
+
+NABat divides North America into a grid of 10 x 10 km squares and randomly assigns a priority ranking to every square, which is used to determine which areas to target for surveying. Exact survey locations within the 10 x 10 km squares are then selected by biologists to target areas with high expected bat activity. Bat acoustic detectors are placed near landscape features that may attract bats, such as water, dead trees, barns, open space, and forest edges. 
+
+The detectors are deployed to record for four consecutive nights. Once collected, the recorded echolocation calls are identified to the species level using auto-identification software and suspected species are then confirmed through expert review by Bat Conservation International staff. Data are then contributed to the NABat database and used to estimate habitat occupancy and population trends to guide wildlife management efforts.
+
+***
+
+## __Learn More__
+
+The PacWest Bat Hub coordinates NABat efforts throughout California & Nevada. The PacWest Bat Hub is managed by Bat Conservation International in collaboration with the NABat Coordinating Office, US Fish and Wildlife Service, California Department of Fish & Wildlife, and the Nevada Department of Wildlife.
+
+To learn more about the North American Bat Monitoring Program visit [nabatmonitoring.org](https://www.nabatmonitoring.org/).
+
+To learn more about the PacWest Bat Hub visit [pacwestbats.org](https://www.pacwestbats.org/).
+
+To learn more about bats and to support their conservation visit [batcon.org](https://www.batcon.org/).
+
+You can report bat colonies and bat roosting sites to the California Department of Fish and Wildlife [here](https://wildlife.ca.gov/Conservation/Mammals/Bats/Report-Colony). Knowing where bats roost helps CDFW to prioritize surveillance efforts, monitor population trends, and protect California’s bats.
+
+
+<p align="center">
+  <img width="400" src="../images/pacwest_logo.png">
+</p>
+
+<p align="center">
+  <img width="400" src="../images/BCI_logo.png">
+</p>
+
