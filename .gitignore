@@ -1,0 +1,5 @@
+*
+!.gitignore
+!app.R
+!PacWest_landowner_reporting.Rmd
+!Southwest_landowner_reporting.Rmd
