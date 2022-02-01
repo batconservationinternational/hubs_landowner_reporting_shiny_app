@@ -73,11 +73,22 @@ token = get_refresh_token(token)
 project_df = get_projects(token)
 token = get_refresh_token(token)
 
-project_id = as.numeric(params$project)
+project_id = c(params$project) %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
 
 sa_survey_df = get_sa_project_summary(token,
                                       project_df,
-                                      project_id)
+                                      project_id[1])
+
+additional_projects <- project_id[-1]
+
+if (length(additional_projects > 0)){
+  for (i in additional_projects){
+  sa_survey_df_add = get_sa_project_summary(token,
+                                      project_df,
+                                      i)
+  sa_survey_df <- bind_rows(sa_survey_df, sa_survey_df_add)
+}
+}
 
 # sa_proj_dates = unique(sa_survey_df$year)
 # this_year = sa_proj_dates[1]
