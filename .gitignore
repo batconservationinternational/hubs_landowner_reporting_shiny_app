@@ -2,5 +2,5 @@
 !.gitignore
 !README.md
 !app.R
-!src/PacWest_landowner_reporting.Rmd
-!src/Southwest_landowner_reporting.Rmd
+!/src/PacWest_landowner_reporting.Rmd
+!/src/Southwest_landowner_reporting.Rmd
