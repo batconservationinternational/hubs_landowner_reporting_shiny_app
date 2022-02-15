@@ -186,7 +186,6 @@ grts_mapping <- grts.grid %>%
 #plotting survey sites
 
 sites <- all_dat %>% 
-  
   dplyr::distinct(grts_cell_id, location_name, latitude, longitude) %>% 
   dplyr::group_by(grts_cell_id, location_name) %>% 
   dplyr::summarise(latitude = mean(latitude),
