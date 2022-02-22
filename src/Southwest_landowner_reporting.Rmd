@@ -230,7 +230,7 @@ species_table_this_year %>%
   add_header_row(values = species_table_grts_names) %>% 
   merge_h(part = "header") %>% 
   merge_v(part = "header") %>% 
-  theme_vanilla() %>%
+  theme_box() %>%
   flextable::align(., align = "center", part = "all") %>%
   set_table_properties(., width = 1, layout = "autofit") %>% 
   set_caption("An X indicates that the species was detected; blank if the species was not detected.")
@@ -250,7 +250,6 @@ species_table_all_time <- dat_count %>%
              names_from = c(location_name, grts_cell_id),
              values_from = year, 
              names_glue = "NABat Cell {grts_cell_id};{location_name}") %>% 
-             #names_sort = TRUE) %>% 
   map_df(., ~ gsub("[:]", ", ", .x)) %>%
   dplyr::rename("Species" = common_name) 
 
@@ -267,7 +266,7 @@ species_table_all_time %>%
   add_header_row(values = species_table_grts_names) %>% 
   merge_h(part = "header") %>% 
   merge_v(part = "header") %>% 
-  theme_vanilla() %>% 
+  theme_box() %>% 
   flextable::align(., align = "center", part = "all") %>%
   set_table_properties(., width = 1, layout = "autofit") %>% 
   set_caption("This table shows which years each bat species was detected at each location.")
@@ -284,8 +283,9 @@ species_ref_list <- unique(species_reference_table$species_code)
 
 photos <- dat_count %>% 
   dplyr::filter(pres_abs == "X") %>%
-  pivot_wider(., id_cols = species) %>% 
-  mutate(photo = case_when(
+  dplyr::group_by(species) %>% 
+  dplyr::distinct(species) %>% 
+  dplyr::summarise(photo = case_when(
     species %in% species_ref_list ~ sprintf("![](../images/%s.jpg)", species),
     !species %in% species_ref_list ~ "no photo available"
   )) %>% 
@@ -321,7 +321,8 @@ species_count %>% ggplot(aes(x = location_name, y = value, fill = name)) +
   scale_y_continuous(limits = c(0, max(species_count$value, na.rm = T)+1), breaks = pretty_breaks()) +
   geom_text(aes(label = value), position = position_dodge(width = 0.9), vjust = -0.25) +
   facet_wrap(~ `NABat Cell`, ncol = 2, labeller = label_both, scale="free") +
-  scale_x_discrete(guide = guide_axis(n.dodge=2))
+  #scale_x_discrete(guide = guide_axis(n.dodge=2)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
 ***
@@ -342,7 +343,7 @@ survey_dates %>% flextable() %>%
                     location_name = "Location Name",
                     start_date = "Survey Start Date",
                     end_date = "Survey End Date") %>% 
-  theme_vanilla() %>% 
+  theme_box() %>% 
   flextable::align(., align = "center", part = "all") %>% 
   set_table_properties(., layout = "autofit")
 ```
