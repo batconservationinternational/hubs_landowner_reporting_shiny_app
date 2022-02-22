@@ -33,9 +33,8 @@ server <- function(input, output, session) {
         # Copy the report file to a temporary directory before processing it, in
         # case we don't have write permissions to the current working dir.
         # tempReport <- file.path(tempdir(), paste(input$hub, "landowner", "reporting.Rmd", sep = "_"))
-        # file.copy(paste(input$hub, "landowner", "reporting.Rmd", sep = "_"), tempReport, overwrite = TRUE)
         tempReport <- file.path(here::here("src", paste(input$hub, "landowner", "reporting.Rmd", sep = "_")))
-        file.copy("report.Rmd", tempReport, overwrite = TRUE)
+        file.copy(tempReport, "report.Rmd",  overwrite = TRUE)
         
         # Set up parameters to pass to Rmd document
         params <- list(project = input$enter_project, username = input$enter_username, 
