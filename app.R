@@ -30,8 +30,9 @@ server <- function(input, output, session) {
     filename = "report.html",
     content = function(file) {
       withProgress(message = 'Rendering, please wait!', {
+        
         tempReport <- file.path(here::here("src", paste(input$hub, "landowner", "reporting.Rmd", sep = "_")))
-        file.copy(tempReport, "report.Rmd",  overwrite = TRUE)
+        file.copy("report.Rmd", tempReport, overwrite = TRUE)
         
         # Set up parameters to pass to Rmd document
         params <- list(project = input$enter_project, username = input$enter_username, 

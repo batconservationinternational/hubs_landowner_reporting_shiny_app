@@ -24,15 +24,15 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 
 ```{r}
-report_grts <- c(params$grts) %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
+report_grts <- params$grts %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
 report_locations <- params$locations %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both"))
 ```
 
 ```{r results = 'hide'}
+library(plyr)
 library(tidyverse)
 library(rstudioapi)
 library(devtools)
-library(ggplot2)
 library(htmltools)
 library(htmlwidgets)
 library(httr)
@@ -44,16 +44,13 @@ library(maps)
 library(maptools)
 library(officer)
 library(plotly)
-library(plyr)
 library(raster)
 library(rgdal)
 library(rmarkdown)
 library(sp)
 library(xml2)
-library(stringr)
 library(terra)
 library(nabatr)
-library(tidyverse)
 library(flextable)
 library(leaflet)
 library(janitor)
@@ -73,7 +70,7 @@ token = get_refresh_token(token)
 project_df = get_projects(token)
 token = get_refresh_token(token)
 
-project_id = c(params$project) %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
+project_id = params$project %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
 
 sa_survey_df = get_sa_project_summary(token,
                                       project_df,
