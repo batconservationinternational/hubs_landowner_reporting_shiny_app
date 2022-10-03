@@ -26,6 +26,9 @@ knitr::opts_chunk$set(echo = FALSE,
 ```{r}
 report_grts <- params$grts %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
 report_locations <- params$locations %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both"))
+project_id = params$project %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
+username = params$username
+password = params$password
 ```
 
 ```{r results = 'hide'}
@@ -61,105 +64,28 @@ library(kableExtra)
 ```
 
 ```{r NABat API, results = 'hide'}
-username = params$username
-password = params$password
-
-# username = 'ngoodby@batcon.org'
-# password = '9nP7GO482%PF'
-# report_grts = 2230
-# project_id = 963
-
-token = get_nabat_gql_token(username, password)
-token = get_refresh_token(token)
-project_df = get_projects(token)
-token = get_refresh_token(token)
-
-project_id = params$project %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
-
-sa_survey_df = get_sa_project_summary(token,
-                                      project_df,
-                                      project_id[1])
-
-additional_projects <- project_id[-1]
-
-if (length(additional_projects > 0)){
-  for (i in additional_projects){
-  sa_survey_df_add = get_sa_project_summary(token,
-                                      project_df,
-                                      i)
-  sa_survey_df <- bind_rows(sa_survey_df, sa_survey_df_add)
-}
-}
-
-# sa_proj_dates = unique(sa_survey_df$year)
-# this_year = sa_proj_dates[1]
-
-token = get_refresh_token(token)
-sa_bulk_df = get_sa_bulk_wavs(token,
-                              sa_survey_df,
-                              year = 'all')
-token = get_refresh_token(token)
-species_df = get_species(token = token)
+source(here::here("src", "load_nabat_data_function.R"))
+data <- load_nabat_data(username, password, project_id, report_grts, report_locations, exclude)
+all_dat <- data[[1]]
+dat_count <- data[[2]]
+sa_survey_df <- data[[3]]
+this_year = max(all_dat$year)
 ```
-
-```{r Joining Data}
-all_dat <- left_join(sa_bulk_df, species_df, by = c("manual_id" = "id"))
-
-all_dat$survey_event_id <- as.numeric(all_dat$survey_event_id)
-sa_survey_df$survey_event_id <- as.numeric(sa_survey_df$survey_event_id)
-
-all_dat <- left_join(all_dat, sa_survey_df, keep = FALSE)
-```
-
-```{r Data Prep}
-exclude <- c("LACITABR", "LANOTABR","LABLPAHE", "LABOPESU", "EUMAEUPE","EUMAIDPH", "MYCAMYYU", "MYEVMYTH","MYLUMYVO", "EPFULANO", "Q10k", "Q15k", "Q20k", "Q25k", "Q40k", "40kMyo", "40k", "Q50k", "LACITABR,HiF", "Q25k,MYCAMYYU", "Q25k,HiF", "Q40k,Q25k", "Q40k,LoF", "MY40", "Social", "25K", "25k", "NOISE", "LowF", "HighF", "NoID", "LoF", "HiF", "Noise", "MYSP")
-```
-
-```{r}
-if (report_locations[1] == ""){
-  all_dat <- all_dat %>% mutate(year = lubridate::year(recording_night)) %>% 
-    dplyr::filter(grts_cell_id %in% report_grts)
-} else {
-  all_dat <- all_dat %>% mutate(year = lubridate::year(recording_night)) %>% 
-    dplyr::filter(grts_cell_id %in% report_grts) %>% dplyr::filter(location_name %in% report_locations)
-}
-```
-
-
-```{r}
-#these two lines to compensate for year not loading on import from NABat API. Can remove if that ever gets resolved. 
-sa_proj_dates = unique(all_dat$year)
-this_year = max(sa_proj_dates)
-```
-
-```{r}
-dat_count <- all_dat %>% 
-  dplyr::filter(!species_code %in% exclude) %>%
-  dplyr::filter(nchar(species_code) == 4) %>% 
-  dplyr::filter(!is.na(manual_id)) %>%
-  separate_rows(species_code) %>% 
-  dplyr::group_by(year, grts_cell_id, location_name, species_code) %>%
-  dplyr::summarise(n = n()) %>%
-  pivot_wider(names_from = species_code, values_from = n) %>% 
-  replace(is.na(.), 0) %>%
-  pivot_longer(., cols = 4:length(.)) %>% 
-  dplyr::mutate(pres_abs = case_when(
-    value == 0 ~ "",
-    value > 0 ~ "X")) %>%
-  dplyr::rename(species = name) %>%
-  dplyr::select(-value)
-```
-
 
 ```{r}
 #joining csv of scientific and common names for species and links
 species_reference_table <- read.csv(here::here("data", "species_reference_table.csv"))
-dat_count <- dat_count %>% left_join(species_reference_table, by = c("species" = "species_code"))
+dat_count <- dat_count %>% left_join(species_reference_table, by = c("species" = "species_code"), keep=F)
+all_dat <- all_dat %>% left_join(species_reference_table, 
+                                 by = c("species_code" = "species_code", 
+                                        "species_code_6"="species_code_6"), keep=F) %>% 
+  mutate("common_name" = common_name.y) %>% dplyr::select(-common_name.x, -common_name.y)
+current_year <- as.character(this_year)
 ```
 
 ### Thank you for your participation in the North American Bat Monitoring Program (NABat)! 
 
-### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == "X") %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in 2021__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
+### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == TRUE) %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in 2021__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
 
 ***
 
@@ -174,30 +100,9 @@ margin: auto;
 </style>
 
 ```{r Map}
-
-#bringing in GRTS shapefile
-
-load(paste0(here::here(), "/data/grts.grid.rda"))
-
-grts_mapping <- grts.grid %>% 
-  st_as_sf() %>%
-  dplyr::filter(GRTS_ID %in% dat_count$grts_cell_id) %>% 
-  dplyr::filter(country == "US")
-
-#plotting survey sites
-
-sites <- all_dat %>% 
-  dplyr::distinct(grts_cell_id, location_name, latitude, longitude) %>% 
-  dplyr::group_by(grts_cell_id, location_name) %>% 
-  dplyr::summarise(latitude = mean(latitude),
-                   longitude = mean(longitude)) %>% 
-  dplyr::mutate(country = "US") %>% 
-  leaflet() %>% 
-  addProviderTiles("Esri.WorldTopoMap") %>% 
-  addPolygons(data = grts_mapping, label = ~paste("NABat Cell ", GRTS_ID), fillOpacity = 0, weight = 2) %>% 
-  addCircleMarkers(lat = ~latitude, lng = ~longitude, weight = 1, label = ~paste("Survey Site Name:", location_name))
-
-sites
+source(here::here("src", "map_function.R"))
+map <- make_map(all_dat, dat_count)
+map[[1]]
 ```
 
 ***
@@ -217,7 +122,8 @@ species_table_this_year <- dat_count %>%
               values_from = pres_abs,
               names_glue = "NABat Cell {grts_cell_id};{location_name}") %>% 
   #names_sort = TRUE) %>% 
-  dplyr::rename("Species" = common_name)
+  dplyr::rename("Species" = common_name) %>% 
+  mutate(across(c(seq(2, length(.))), ~ifelse(.==TRUE, "X", "")))
 
 species_table_names <- names(species_table_this_year)
 species_table_grts_names <- gsub(";.*", "", species_table_names)
@@ -233,6 +139,8 @@ species_table_this_year %>%
   theme_box() %>%
   flextable::align(., align = "center", part = "all") %>%
   set_table_properties(., width = 1, layout = "autofit") %>% 
+  bg(., bg = "light gray", part = "header", i=1) %>% 
+  bg(., bg = "light blue", part = "header", i=2) %>% 
   set_caption("An X indicates that the species was detected; blank if the species was not detected.")
 ```
 
@@ -242,7 +150,7 @@ species_table_this_year %>%
 
 ```{r Species by Location Table All Time}
 species_table_all_time <- dat_count %>%
-  dplyr::filter(pres_abs == "X") %>% 
+  dplyr::filter(pres_abs == TRUE) %>% 
    mutate(common_name = case_when(
     is.na(common_name) ~ species,
     !is.na(common_name) ~ common_name)) %>%
@@ -271,6 +179,8 @@ species_table_all_time %>%
   theme_box() %>% 
   flextable::align(., align = "center", part = "all") %>%
   set_table_properties(., width = 1, layout = "autofit") %>% 
+  bg(., bg = "light gray", part = "header", i=1) %>% 
+  bg(., bg = "light blue", part = "header", i=2) %>% 
   set_caption("This table shows which years each bat species was detected at each location.")
 ```
 
@@ -284,7 +194,7 @@ Click on the links below to learn more about the species have been detected at t
 species_ref_list <- unique(species_reference_table$species_code)
 
 photos <- dat_count %>% 
-  dplyr::filter(pres_abs == "X") %>%
+  dplyr::filter(pres_abs == TRUE) %>%
   dplyr::group_by(species) %>% 
   dplyr::distinct(species) %>% 
   dplyr::summarise(photo = case_when(
@@ -310,7 +220,7 @@ Number of bat species confirmed at each site in each year of surveying.
 #tally of species by site
 
 species_count <- dat_count %>% 
-  dplyr::filter(pres_abs == "X") %>% 
+  dplyr::filter(pres_abs == TRUE) %>% 
   dplyr::group_by(grts_cell_id, location_name, year) %>% 
   dplyr::summarise("Number of Species" = n_distinct(species, na.rm = FALSE)) %>% 
   pivot_wider(., names_from = year, values_from = "Number of Species", names_sort = TRUE) %>% 
@@ -332,23 +242,28 @@ species_count %>% ggplot(aes(x = location_name, y = value, fill = name)) +
 
 ## __Survey Dates__
 
-```{r}
+```{r surveydates}
 survey_dates <- all_dat %>% 
-  dplyr::filter(grepl(this_year, recording_night)) %>% 
-  dplyr::group_by(grts_cell_id, location_name) %>% 
-  dplyr::summarise(start_date = min(recording_night), end_date = max(recording_night)) %>% 
-  mutate(grts_cell_id = as.character(grts_cell_id))  #gets rid  of commas in table output.
+  dplyr::group_by(grts_cell_id, location_name, year) %>% 
+  dplyr::summarise(start_date = min(recording_night)) %>% 
+  mutate(start_date = ymd(start_date)) %>%
+  arrange(., grts_cell_id, location_name, year) %>% 
+  mutate(month = lubridate::month(start_date, label=T, abbr=F), day = lubridate::day(start_date)) %>% 
+  unite('start', month:day, remove = T, sep = " ") %>% 
+  # mutate(grts_cell_id = as.character(grts_cell_id)) %>% 
+  pivot_wider(id_cols = c(grts_cell_id, location_name), names_from = year, values_from = start, values_fill = "-")
 
 survey_dates %>% flextable() %>% 
-  merge_v(j = ~grts_cell_id) %>% 
+  merge_v(j = "grts_cell_id") %>% 
   set_header_labels(.,
-                    grts_cell_id = "NABat Cell",
-                    location_name = "Location Name",
-                    start_date = "Survey Start Date",
-                    end_date = "Survey End Date") %>% 
+                    grts_cell_id = "GRTS Cell",
+                    location_name = "Location Name") %>% 
   theme_box() %>% 
+  bg(., bg = "grey", part = "header") %>% 
   flextable::align(., align = "center", part = "all") %>% 
-  set_table_properties(., layout = "autofit")
+  set_table_properties(., layout = "autofit") %>% 
+
+  set_caption("Survey start dates for each year for each detector location.")
 ```
 
 ***
