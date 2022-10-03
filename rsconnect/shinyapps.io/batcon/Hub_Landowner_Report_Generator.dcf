@@ -5,10 +5,10 @@ account: batcon
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 5391144
-bundleId: 6125107
+bundleId: 6365279
 url: https://batcon.shinyapps.io/Hub_Landowner_Report_Generator/
-when: 1658536261.49257
-lastSyncTime: 1658536261.49259
+when: 1664830632.31128
+lastSyncTime: 1664830632.3113
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: nabatr_function.R|README.md|src/.DS_Store|src/PacWest Manual Generator.Rmd|src/Southwest Manual Generator.Rmd
+ignoredFiles: README.md
