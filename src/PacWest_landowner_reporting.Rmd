@@ -331,10 +331,10 @@ You can report bat colonies and bat roosting sites to the California Department 
 
 
 <p align="center">
-<img width="400" src="../images/pacwest_logo.png">
+<img width="500" src="../images/pacwest_logo.png">
 </p>
 
 <p align="center">
-<img width="400" src="../images/BCI_logo.png">
+<img width="500" src="../images/BCI_logo.png">
 </p>
 

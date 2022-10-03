@@ -328,10 +328,10 @@ To learn more about the Southwest Bat Hub visit [southwestbats.org](https://www.
 To learn more about bats and to support their conservation visit [batcon.org](https://www.batcon.org/).
 
 <p align="center">
-  <img width="400" src="../images/southwest_logo.png">
+  <img width="500" src="../images/southwest_logo.png">
 </p>
 
 <p align="center">
-  <img width="400" src="../images/BCI_logo.png">
+  <img width="500" src="../images/BCI_logo.png">
 </p>
 
