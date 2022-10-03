@@ -29,7 +29,6 @@ report_locations <- params$locations %>% str_split(., ",", simplify = TRUE) %>% 
 ```
 
 ```{r results = 'hide'}
-library(plyr)
 library(tidyverse)
 library(rstudioapi)
 library(devtools)
@@ -56,9 +55,9 @@ library(leaflet)
 library(janitor)
 library(sf)
 library(knitr)
-library(magrittr)
 library(data.table)
 library(scales)
+library(kableExtra)
 ```
 
 ```{r NABat API, results = 'hide'}
@@ -125,7 +124,7 @@ if (report_locations[1] == ""){
 ```{r}
 #these two lines to compensate for year not loading on import from NABat API. Can remove if that ever gets resolved. 
 sa_proj_dates = unique(all_dat$year)
-this_year = sa_proj_dates[1]
+this_year = max(sa_proj_dates)
 ```
 
 ```{r}
@@ -190,7 +189,7 @@ sites <- all_dat %>%
             longitude = mean(longitude)) %>% 
   dplyr::mutate(country = "US") %>% 
   leaflet() %>% 
-  addTiles() %>% 
+  addProviderTiles("Esri.WorldTopoMap") %>% 
   addPolygons(data = grts_mapping, label = ~paste("NABat Cell ", GRTS_ID), fillOpacity = 0, weight = 2) %>% 
   addCircleMarkers(lat = ~latitude, lng = ~longitude, weight = 1, label = ~paste("Survey Site Name:", location_name))
 
@@ -248,6 +247,8 @@ species_table_all_time <- dat_count %>%
              values_from = year, 
              names_glue = "NABat Cell {grts_cell_id};{location_name}") %>% 
   map_df(., ~ gsub("[:]", ", ", .x)) %>%
+  map_df(., ~gsub("[c(]", "", .x)) %>% 
+  map_df(., ~gsub("[)]", "", .x)) %>% 
   dplyr::rename("Species" = common_name) 
 
 species_table_names <- names(species_table_all_time) 
@@ -287,10 +288,11 @@ photos <- dat_count %>%
     !species %in% species_ref_list ~ "no photo available"
   )) %>% 
   left_join(species_reference_table, by = c("species" = "species_code")) %>% 
-  dplyr::select(species_full_name, photo, species_url) %>% 
-  dplyr::rename("Species" = species_full_name, "Photo" = photo, "Learn More" = species_url)
-
-kable(photos)
+  mutate(species_full_name = cell_spec(species_full_name, 'html', link = species_url)) %>% 
+  dplyr::select(species_full_name, photo) %>% 
+  dplyr::rename("Species" = species_full_name, "Photo" = photo)
+  
+kable(photos, "html", escape = FALSE) 
 ```
 
 ***

@@ -1,6 +1,5 @@
-*
-!.gitignore
-!README.md
-!app.R
-!src
 .Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+images
