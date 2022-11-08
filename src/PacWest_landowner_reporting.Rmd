@@ -85,7 +85,7 @@ current_year <- as.character(this_year)
 
 ### Thank you for your participation in the North American Bat Monitoring Program (NABat)! 
 
-### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == TRUE) %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in 2021__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
+### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == TRUE) %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in `r current_year`__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
 
 ***
 

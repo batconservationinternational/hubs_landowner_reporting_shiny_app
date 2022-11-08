@@ -85,7 +85,7 @@ current_year <- as.character(this_year)
 
 ### Thank you for your participation in the North American Bat Monitoring Program (NABat)! 
 
-### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == T) %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in 2021__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
+### <span style="color: darkblue;"> __`r (dat_count %>% dplyr::filter(year == this_year, pres_abs == T) %>% group_by(year) %>% summarise(n = n_distinct(species)) %>% dplyr::pull(n))` bat species were detected in `r current_year`__ across all survey locations in this report. Read on to learn more about which species were found where. </span>
 
 ***
 
@@ -303,7 +303,7 @@ Bats are difficult to observe and identify because they are most active at night
  
 ***
 
-## __Methods__
+## __Background__
 
 NABat divides North America into a grid of 10 x 10 km squares and randomly assigns a priority ranking to every square, which is used to determine which areas to target for surveying. Exact survey locations within the 10 x 10 km squares are then selected by biologists to target areas with high expected bat activity. Bat acoustic detectors are placed near landscape features that may attract bats, such as water, dead trees, barns, open space, and forest edges. 
 
