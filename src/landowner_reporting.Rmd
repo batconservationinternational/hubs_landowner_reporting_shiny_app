@@ -12,6 +12,7 @@ params:
   password: NA
   grts: NA
   locations: NA
+  hub: NA
 ---
 
 <img width="100" src="../images/NABat_logo.png">
@@ -24,6 +25,16 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 
 ```{r}
+# report_grts <- 106
+# report_locations <- ""
+# project_id <- 353
+# username = "ngoodby@batcon.org"
+# password = "pH@7GS$@3okk"
+# hub = "PacWest"
+```
+
+```{r}
+hub <- params$hub
 report_grts <- params$grts %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
 report_locations <- params$locations %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both"))
 project_id = params$project %>% str_split(., ",", simplify = TRUE) %>% str_trim(., side = c("both")) %>% as.numeric()
@@ -61,6 +72,7 @@ library(knitr)
 library(data.table)
 library(scales)
 library(kableExtra)
+library(magick)
 ```
 
 ```{r NABat API, results = 'hide'}
@@ -211,6 +223,98 @@ kable(photos, "html", escape = FALSE)
 
 ***
 
+## __Stationary Site Photos__
+
+```{r habitat, message=FALSE}
+# load function to pull photos from NABat AWS webserver
+source(here::here("src","site_photos.R"))
+source(here::here("src","get_nabat_gql_function_edited.R"))
+# run function for all survey events and store outputs
+photo_queries <- sa_survey_df %>% dplyr::select(project_id, survey_id, survey_event_id) %>% distinct()
+pics=list()
+for (i in seq(1, nrow(photo_queries))){
+  proj_id <-  photo_queries[i,1]
+  surv_num <-  photo_queries[i,2]
+  surv_id <-  photo_queries[i,3]
+  photos_out <-  get_site_photos(username, password, proj_id, surv_num, surv_id)
+  if (!is.null(photos_out)){
+    pics <-  append(pics, list(photos_out))
+  }
+}
+```
+
+```{r}
+# delete site_photos folder from previous reports generated
+unlink(here::here("site_photos"), recursive = T)
+
+# create folders for each survey site and put the relevant photos into them
+if (length(pics)!=0){
+  for (i in seq(1, length(pics))){
+  grts <- sa_survey_df[i,]$grts_cell_id
+  loc <- sa_survey_df[i,]$event
+  dir.create(here::here("site_photos", grts, loc), recursive=T)
+    for (pic in seq(1, length(pics[[i]]))){
+      photo <- pics[[i]][pic]
+      path <- here::here("site_photos", grts, loc, paste0(pic, ".jpg"))
+      photo <- image_scale(photo, "350x350!")
+      image_write(photo, path)
+    }
+  }
+}
+
+# get paths to photos
+files <- list.files(path = here::here("site_photos"),
+                    pattern = "^.*.jpg$",
+                    full.names = T,
+                    recursive = T)
+files_short <- list.files(path = here::here("site_photos"),
+                    pattern = "^.*.jpg$",
+                    full.names = F,
+                    recursive = T)
+
+# organize paths by GRTS cell
+photo_grts <- as.character(report_grts)
+grts_short_photo_paths <- list()
+grts_long_photo_paths <- list()
+for(g in photo_grts){
+  long_paths <- files %>% str_subset(pattern = g)
+  short_paths <- files_short %>% str_subset(pattern = g)
+  grts_short_photo_paths <- append(grts_short_photo_paths, list(short_paths))
+  grts_long_photo_paths <- append(grts_long_photo_paths, list(long_paths))
+}
+
+# create captions for photos
+cells <- list()
+sites <- list()
+captions <- list()
+for (i in seq(1, length(report_grts))){
+  c <- grts_short_photo_paths[[i]] %>% strsplit( "/" ) %>% sapply( "[", 1 )
+  s <- grts_short_photo_paths[[i]] %>% strsplit( "/" ) %>% sapply( "[", 2 )
+  caps <- str_c("NABat Cell ", c, "; Survey Site: ", s, sep = "")
+  cells <- append(cells, list(c))
+  sites <- append(sites, list(s))
+  captions <- append(captions, list(caps))
+}
+```
+
+```{r, results='asis', eval=TRUE}
+# print photos under expandable GRTS cell labels
+if (length(cells[[1]])==0){
+  cat("No photos are available for the survey locations in this report.")
+  } else {
+  for (i in seq(1, length(grts_long_photo_paths))){
+    cat("<details>\n")
+    cat(sprintf("<summary>Click to View Site Photos for GRTS %s</summary>\n", report_grts[i]))
+    for(j in seq(1, length(grts_long_photo_paths[[i]]))){
+      cat(sprintf('![%s](%s)\n', captions[[i]][j], grts_long_photo_paths[[i]][j]), sep = '\n')
+    }
+    cat("</details>\n\n")
+  }
+}
+```
+
+***
+
 ## __Species Count__
 
 Number of bat species confirmed at each site in each year of surveying. 
@@ -297,7 +401,7 @@ call_times
 
 Our region’s bats face unprecedented threats, including widespread habitat alteration and destruction, climate change and drought, and the arrival and spread of a deadly fungal disease called White-nose Syndrome. Yet little is known about the current abundance and distribution of most US bat species. NABat brings together a diverse and extensive network of partners in collecting data to assess the status and trends of bat populations throughout North America to inform the conservation and management of bats. Participation by private landowners is critical to the success of effective bat population monitoring in our region as many of our highest priority survey locations occur on private land. 
 
-There are over 1,400 bat species in the world, with California and Nevada being home to 25. Our region’s bats play important ecological roles that are vital to the health of our natural ecosystems and our human economies. Scientists estimate that insect-eating bats may save U.S. farmers roughly $23 billion each year by reducing crop damage and limiting the need for pesticides, as they eat up to half of their body weight in insects each night.
+There are over 1,400 bat species in the world, with California and Nevada being home to more than 20 species. Our region’s bats play important ecological roles that are vital to the health of our natural ecosystems and our human economies. Scientists estimate that insect-eating bats may save U.S. farmers roughly $23 billion each year by reducing crop damage and limiting the need for pesticides, as they eat up to half of their body weight in insects each night.
 
 Bats are difficult to observe and identify because they are most active at night and roost in small spaces. However, using “bat acoustic detectors”, we can record the echolocation calls of bats as they travel and forage for food during the night. The recordings can then be used to identify the species of the bats present in an area. 
 
@@ -319,20 +423,33 @@ Below is an example sonogram that shows a string of bat pulses. A sonogram is a 
 
 ## __Learn More__
 
-The PacWest Bat Hub coordinates NABat efforts throughout California & Nevada. The PacWest Bat Hub is managed by Bat Conservation International in collaboration with the NABat Coordinating Office, US Fish and Wildlife Service, California Department of Fish & Wildlife, and the Nevada Department of Wildlife.
+```{r results='asis'}
+if (hub == "PacWest"){
+  cat("The PacWest Bat Hub coordinates NABat efforts throughout California & Nevada. The PacWest Bat Hub is managed by Bat Conservation International in collaboration with the NABat Coordinating Office, US Fish and Wildlife Service, California Department of Fish & Wildlife, and the Nevada Department of Wildlife.")
+} else if (hub == "Southwest"){
+  cat("The Southwest Bat Hub coordinates NABat efforts throughout Arizona & New Mexico. The Southwest Bat Hub is managed by Bat Conservation International in collaboration with the NABat Coordinating Office, US Fish and Wildlife Service, and Arizona Game and Fish Department.")
+}
+```
 
 To learn more about the North American Bat Monitoring Program visit [nabatmonitoring.org](https://www.nabatmonitoring.org/).
 
-To learn more about the PacWest Bat Hub visit [pacwestbats.org](https://www.pacwestbats.org/).
+```{r results='asis'}
+if (hub == "PacWest"){
+  cat("To learn more about the PacWest Bat Hub visit [pacwestbats.org](https://www.pacwestbats.org/).\n\nYou can report bat colonies and bat roosting sites to the California Department of Fish and Wildlife [here](https://wildlife.ca.gov/Conservation/Mammals/Bats/Report-Colony). Knowing where bats roost helps CDFW to prioritize surveillance efforts, monitor population trends, and protect California’s bats.")
+} else if (hub == "Southwest"){
+  cat("To learn more about the Southwest Bat Hub visit [southwestbats.org](https://www.southwestbats.org/).")
+}
+```
 
 To learn more about bats and to support their conservation visit [batcon.org](https://www.batcon.org/).
 
-You can report bat colonies and bat roosting sites to the California Department of Fish and Wildlife [here](https://wildlife.ca.gov/Conservation/Mammals/Bats/Report-Colony). Knowing where bats roost helps CDFW to prioritize surveillance efforts, monitor population trends, and protect California’s bats.
-
-
-<p align="center">
-<img width="500" src="../images/pacwest_logo.png">
-</p>
+```{r results='asis'}
+if (hub == "PacWest"){
+  cat('<p align="center">\n<img width="500" src="../images/pacwest_logo.png">\n</p>')
+} else if (hub == "Southwest"){
+  cat('<p align="center">\n<img width="500" src="../images/southwest_logo.png">\n</p>')
+}
+```
 
 <p align="center">
 <img width="500" src="../images/BCI_logo.png">

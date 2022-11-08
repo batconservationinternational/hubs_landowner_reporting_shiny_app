@@ -31,13 +31,14 @@ server <- function(input, output, session) {
     content = function(file) {
       withProgress(message = 'Rendering, please wait!', {
         
-        tempReport <- file.path(here::here("src", paste(input$hub, "landowner", "reporting.Rmd", sep = "_")))
+        tempReport <- file.path(here::here("src", "landowner_reporting.Rmd"))
         file.copy("report.Rmd", tempReport, overwrite = TRUE)
         
         # Set up parameters to pass to Rmd document
         params <- list(project = input$enter_project, username = input$enter_username, 
                        password = input$enter_password, grts = input$enter_grts, 
-                       locations = input$enter_locations)
+                       locations = input$enter_locations,
+                       hub = input$hub)
         
         # Knit the document, passing in the `params` list, and eval it in a
         # child of the global environment (this isolates the code in the document

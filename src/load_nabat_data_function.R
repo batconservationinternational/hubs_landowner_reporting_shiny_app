@@ -25,8 +25,13 @@ load_nabat_data <- function(username, password, project_id, report_grts, report_
       sa_survey_df <- bind_rows(sa_survey_df, sa_survey_df_add)
     }
   }
+  #filter down to specified GRTS cells
   if (report_grts[1] != ""){
     sa_survey_df = sa_survey_df %>% dplyr::filter(grts_cell_id %in% report_grts)
+  }
+  #filter down to specified survey site locations
+  if (report_locations[1] != ""){
+    sa_survey_df <- sa_survey_df %>% dplyr::filter(location_name %in% report_locations)
   }
   token = get_refresh_token(token)
   sa_bulk_df = get_sa_bulk_wavs(token,
@@ -39,10 +44,6 @@ load_nabat_data <- function(username, password, project_id, report_grts, report_
   sa_survey_df$survey_event_id <- as.numeric(sa_survey_df$survey_event_id)
   all_dat <- left_join(all_dat, sa_survey_df, keep=F) %>% 
     mutate(year = lubridate::year(recording_night))
-  if (report_locations[1] != ""){
-    all_dat <- all_dat %>% 
-      dplyr::filter(location_name %in% report_locations)
-  }
   sa_proj_dates = unique(all_dat$year)
   this_year = max(sa_proj_dates)
   dat_count <- all_dat %>% #filtering on dat_count instead of all_dat allows for a count of calls later on and preserves couplets
