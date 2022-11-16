@@ -207,8 +207,6 @@ species_table_all_time %>%
 
 ## __Photos of Species Detected__
 
-Click on the links below to learn more about the species have been detected at these sites to date.
-
 ```{r Species Photos}
 species_ref_list <- unique(species_reference_table$species_code)
 
@@ -217,14 +215,19 @@ photos <- dat_count %>%
   dplyr::group_by(species) %>% 
   dplyr::distinct(species) %>% 
   dplyr::summarise(photo = case_when(
-    species %in% species_ref_list ~ sprintf("![](../images/%s.jpg)", species),
+    species %in% species_ref_list ~ sprintf("![](../images/%s.jpg){width=300px}", species),
     !species %in% species_ref_list ~ "no photo available"
   )) %>% 
   left_join(species_reference_table, by = c("species" = "species_code")) %>% 
   mutate(species_full_name = cell_spec(species_full_name, 'html', link = species_url)) %>% 
   dplyr::select(species_full_name, photo) %>% 
   dplyr::rename("Species" = species_full_name, "Photo" = photo)
-  
+```
+
+```{r results='asis', eval=TRUE}
+cat("<details>\n")
+cat("<summary>**Click to view photos of the species that have been detected at these sites to date.**</summary>\n")
+cat("*Click on the links to learn more about each species.*\n")
 kable(photos, "html", escape = FALSE) 
 ```
 
@@ -311,7 +314,7 @@ if (length(cells[[1]])==0){
   } else {
   for (i in seq(1, length(grts_long_photo_paths))){
     cat("<details>\n")
-    cat(sprintf("<summary>Click to View Site Photos for GRTS %s</summary>\n", report_grts[i]))
+    cat(sprintf("<summary>**Click to View Site Photos for NABat cell %s**</summary>\n", report_grts[i]))
     for(j in seq(1, length(grts_long_photo_paths[[i]]))){
       cat(sprintf('![%s](%s)\n', captions[[i]][j], grts_long_photo_paths[[i]][j]), sep = '\n')
     }
