@@ -15,7 +15,7 @@ params:
   hub: NA
 ---
 
-<img width="100" src="../images/NABat_logo.png">
+<img width="200" src="../images/NABat_logo.png">
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
@@ -23,6 +23,13 @@ knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       fig.align = "center")
 ```
+
+<style type="text/css">
+.main-container {
+  max-width: 1600px !important;
+  margin: auto;
+}
+</style>
 
 ```{r}
 # report_grts <- 106
@@ -445,13 +452,13 @@ To learn more about bats and to support their conservation visit [batcon.org](ht
 
 ```{r results='asis'}
 if (hub == "PacWest"){
-  cat('<p align="center">\n<img width="500" src="../images/pacwest_logo.png">\n</p>')
+  cat('<p align="center">\n<img height="100" src="../images/pacwest_logo.png">\n</p>')
 } else if (hub == "Southwest"){
-  cat('<p align="center">\n<img width="500" src="../images/southwest_logo.png">\n</p>')
+  cat('<p align="center">\n<img height="100" src="../images/southwest_logo.png">\n</p>')
 }
 ```
 
 <p align="center">
-<img width="500" src="../images/BCI_logo.png">
+<img height="100" src="../images/BCI_logo.png">
 </p>
 
