@@ -31,7 +31,7 @@ load_nabat_data <- function(username, password, project_id, report_grts, report_
   }
   #filter down to specified survey site locations
   if (report_locations[1] != ""){
-    sa_survey_df <- sa_survey_df %>% dplyr::filter(location_name %in% report_locations)
+    sa_survey_df <- sa_survey_df %>% dplyr::filter(event %in% report_locations)
   }
   token = get_refresh_token(token)
   sa_bulk_df = get_sa_bulk_wavs(token,
